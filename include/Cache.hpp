@@ -7,6 +7,7 @@
 #include "Coherence.hpp"
 #include "Eviction.hpp"
 #include "SnoopBus.hpp"
+#include "Logger.hpp"
 using namespace std;
 
 // -------------------- Base cache ----------------------
@@ -54,6 +55,7 @@ class Cache : public ICache {
 
     EventSimulator& sim;  // cache pushes internal events to event_q
     SnoopBus& bus;
+    Logger& logger;
     CoherencePolicy coherence;
     vector<SetType> sets;
                           //
@@ -77,7 +79,7 @@ class Cache : public ICache {
     string cache_name;
 
 public:
-    Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, EventSimulator& sim, SnoopBus& bus);
+    Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, EventSimulator& sim, SnoopBus& bus, Logger& logger);
 
     // Main cache functions 
     LineType* find_line(uint64_t set_idx, uint64_t tag);
@@ -93,10 +95,8 @@ public:
 };
 
 template<typename CoherencePolicy, template <typename> class EvictionPolicy>
-Cache<CoherencePolicy, EvictionPolicy>::Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, EventSimulator& sim, SnoopBus& bus) 
-    : cache_name(std::move(name)), blk_size(blk_size), num_sets(num_sets), assoc(assoc), 
-      mm_size(mm_size), rd_hit_lt(rd_hit_lt), rd_miss_lt(rd_miss_lt),
-      wr_hit_lt(wr_hit_lt), wr_miss_lt(wr_miss_lt), sets(num_sets, SetType(assoc)), sim(sim), bus(bus) {
+Cache<CoherencePolicy, EvictionPolicy>::Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, EventSimulator& sim, SnoopBus& bus, Logger& logger) 
+    : cache_name(std::move(name)), blk_size(blk_size), num_sets(num_sets), assoc(assoc), mm_size(mm_size), rd_hit_lt(rd_hit_lt), rd_miss_lt(rd_miss_lt), wr_hit_lt(wr_hit_lt), wr_miss_lt(wr_miss_lt), sets(num_sets, SetType(assoc)), sim(sim), bus(bus), logger(logger) {
         blk_offset = log2(blk_size);
         set_bits   = log2(num_sets);
         tag_bits   = log2(mm_size) - (blk_offset + set_bits);
@@ -145,28 +145,24 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
     
     // ----------------- READ HIT --------------- 
     if (line && coherence.can_read(line->coherence_state)){
-        cout << "@ " << sim.now() << " Cache_" << cache_name 
-             << " :: READ_HIT for addr(" << addr << ")" << endl;
-        sim.schedule(rd_hit_lt, [=, &set]() mutable {
+        logger.log(sim.now(), "Cache_" + cache_name + " :: READ_HIT for addr(" + to_string(addr) + ")");
+        sim.schedule(rd_hit_lt, [this, &set, line, addr]() mutable {
             set.touch(index_in_set(set, *line));
-            cout << "@ " << sim.now() << "Cache_" << cache_name
-                 << " :: LINE RETURNED for addr(" << addr << ")" << endl;
+            logger.log(sim.now(), "Cache_" + cache_name + " :: LINE RETURNED for addr(" + to_string(addr) + ")");
             });
     }
     // ----------------- READ MISS -------------- 
     else {
-        cout << "@ " << sim.now() << " Cache_" << cache_name 
-             << " :: READ_MISS for addr(" << addr << ")" << endl;
+        logger.log(sim.now(), "Cache_" + cache_name + " :: READ_MISS for addr(" + to_string(addr) + ")");
         uint64_t snoop_lt = bus.broadcast_snoop(this, false, addr);
-        sim.schedule(snoop_lt + rd_miss_lt, [=]() mutable {
+        sim.schedule(snoop_lt + rd_miss_lt, [this, &set, tag, addr]() mutable {
             int victim_idx = set.choose_victim();
-            line = &set.ways[victim_idx];
+            auto* line = &set.ways[victim_idx];
             line->valid = true;
             line->tag   = tag; 
             coherence.on_read_miss(line->coherence_state);
             set.touch(victim_idx);
-            cout << "@ " << sim.now() << "Cache_" << cache_name
-                 << " :: LINE RETURNED for addr(" << addr << ")" << endl;
+            logger.log(sim.now(), "Cache_" + cache_name + " :: LINE RETURNED for addr(" + to_string(addr) + ")");
             });
     }
 
@@ -185,39 +181,34 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
 
     // ----------------- WRITE HIT --------------- 
     if (line){
-        cout << "@ " << sim.now() << " Cache_" << cache_name 
-             << " :: WRITE_HIT for addr(" << addr << ")" << endl;
+        logger.log(sim.now(), "Cache_" + cache_name + " :: WRITE_HIT for addr(" + to_string(addr) + ")");
         if (coherence.can_write(line->coherence_state)){ // Line is in I, M or E state
-            sim.schedule(wr_hit_lt, [=]() mutable {
+            sim.schedule(wr_hit_lt, [this, &set, line, addr]() mutable {
                 set.touch(index_in_set(set, *line));
                 coherence.on_write(line->coherence_state); // changes to M
-                cout << "@ " << sim.now() << "Cache_" << cache_name
-                     << " :: LINE WRITTEN for addr(" << addr << ")" << endl;
+                logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ")");
                 });
         } 
         else{  // Line is in S state
             uint64_t snoop_lt = bus.broadcast_snoop(this, true, addr); // broadcast Invalidate to other sharers
-            sim.schedule(snoop_lt + wr_hit_lt, [=]() mutable {
+            sim.schedule(snoop_lt + wr_hit_lt, [this, &set, line, addr]() mutable {
                 set.touch(index_in_set(set, *line));
                 coherence.on_write(line->coherence_state); // changes to M
-                cout << "@ " << sim.now() << "Cache_" << cache_name
-                     << " :: LINE WRITTEN for addr(" << addr << ")" << endl;
+                logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ")");
                 });
         }
     }
     // ----------------- WRITE MISS --------------- 
     else {
-        cout << "@ " << sim.now() << " Cache_" << cache_name 
-             << " :: WRITE_MISS for addr(" << addr << ")" << endl;
+        logger.log(sim.now(), "Cache_" + cache_name + " :: WRITE_MISS for addr(" + to_string(addr) + ")");
         uint64_t snoop_lt = bus.broadcast_snoop(this, true, addr); // broadcast Invalidate to other sharers
-        sim.schedule(snoop_lt + wr_miss_lt, [=]() mutable {
+        sim.schedule(snoop_lt + wr_miss_lt, [this, &set, tag, addr]() mutable {
             int victim_idx = set.choose_victim();
-            line = &set.ways[victim_idx];
+            auto* line = &set.ways[victim_idx];
             line->valid = true;
             line->tag = tag; 
             coherence.on_write(line->coherence_state); // changes to M
-            cout << "@ " << sim.now() << "Cache_" << cache_name
-                 << " :: LINE WRITTEN for addr(" << addr << ")" << endl;
+            logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ")");
             });
     }
 }
@@ -229,7 +220,7 @@ template<typename CoherencePolicy, template <typename> class EvictionPolicy>
 void Cache<CoherencePolicy, EvictionPolicy>::snoop_read(uint64_t addr){
     uint64_t set_idx = (addr >> blk_offset) & ((1 << set_bits) - 1);
     uint64_t tag     = (addr >> (blk_offset + set_bits)) & ((1 << tag_bits) - 1); 
-    auto& set        = sets[set_idx];
+    //auto& set        = sets[set_idx];
     auto* line       = find_line(set_idx, tag);
     if(line){
         coherence.on_snoop_read(line->coherence_state);
@@ -244,7 +235,7 @@ template <typename CoherencePolicy, template <typename> class EvictionPolicy>
 void Cache<CoherencePolicy, EvictionPolicy>::snoop_write(uint64_t addr){
     uint64_t set_idx = (addr >> blk_offset) & ((1 << set_bits) - 1);
     uint64_t tag     = (addr >> (blk_offset + set_bits)) & ((1 << tag_bits) - 1); 
-    auto& set        = sets[set_idx];
+    //auto& set        = sets[set_idx];
     auto* line       = find_line(set_idx, tag);
     if(line){
         coherence.on_snoop_write(line->coherence_state);
@@ -253,7 +244,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::snoop_write(uint64_t addr){
 
 // helper
 template<typename CoherencePolicy, template <typename> class EvictionPolicy>
-static size_t Cache<CoherencePolicy, EvictionPolicy>::log2(size_t n){
+size_t Cache<CoherencePolicy, EvictionPolicy>::log2(size_t n){
     size_t res = 0;
     while(n >>= 1) res++;
     return res;

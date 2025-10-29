@@ -3,11 +3,15 @@
 #include "Eviction.hpp"
 #include "SnoopBus.hpp"
 #include "EventSimulator.hpp"
+#include "Logger.hpp"
 
 int main() {
     EventSimulator sim;
     SnoopBus bus(sim);
+    ConsoleLogger logger;
 
+    // Example: construct a cache and pass logger (replace CoherencePolicy/Eviction with actual types)
+    // Cache<MyCoherencePolicy, MyEvictionPolicy> l1("L1", 64, 256, 8, 1<<20, 1, 10, 1, 10, sim, bus, logger);
 
     size_t blk_size = 64;
     size_t num_sets = 16;
@@ -18,7 +22,7 @@ int main() {
     int wr_hit_lt   = 5;
     int wr_miss_lt  = 15;
 
-    Cache<MESICoherence, LRUEviction> L1("L1A", blk_size, num_sets, assoc, mm_size, rd_hit_lt, rd_miss_lt, wr_hit_lt, wr_miss_lt, sim, bus); 
+    Cache<MESICoherence, LRUEviction> L1("L1A", blk_size, num_sets, assoc, mm_size, rd_hit_lt, rd_miss_lt, wr_hit_lt, wr_miss_lt, sim, bus, logger); 
 
     sim.schedule(0, [&](){ L1.read(0x1000); });
     sim.schedule(10, [&](){ L1.read(0x1000); });
