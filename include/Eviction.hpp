@@ -5,8 +5,8 @@
 template <typename LineType>
 struct IEvictionPolicy {
     virtual void touch(int line_idx) = 0;
-    virtual int choose_victim(const std::vector<LineType>& ways) = 0;
-    virtual ~IEvictionPolicy() = 0;
+    virtual int choose_victim(std::vector<LineType>& ways) = 0;
+    //virtual ~IEvictionPolicy() = 0;
 };
 
 // -----------------------------------------------------
@@ -21,7 +21,7 @@ struct LRUEviction : public IEvictionPolicy<LineType>{
         order.push_front(line_idx);
     }
 
-    int choose_victim(const std::vector<LineType>& ways) override {
+    int choose_victim(std::vector<LineType>& ways) override {
         // Prefer invalid lines first 
         for (int i = 0; i < (int)ways.size(); i++)
             if (!ways[i].valid) return i;
