@@ -1,14 +1,14 @@
 #include "EventSimulator.hpp"
 
 void EventSimulator::schedule(uint64_t time, std::function<void()> action){
-    event_q.push(Event{now() + time, action});
+    event_q.push(Event{time, action});
 }
 
 void EventSimulator::run_sim(){
     while(!event_q.empty()){
         Event ev = event_q.top();
         event_q.pop();
-        currentTime += ev.time;
+        currentTime = ev.time;
         ev.action();
     }
 }
