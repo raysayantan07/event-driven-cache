@@ -16,7 +16,7 @@ A small, configurable event-driven cache simulator with pluggable coherence and 
    - [x] basic cache + one eviction + one coherence policy
 2. Instantiate a single cache and create unit tests:
    - [x] 2.1 verify read misses and hits
-   - [ ] 2.2 miss coalescing for in-flight misses (unit tests)
+   - [x] 2.2 miss coalescing for in-flight misses (unit tests)
    - [ ] 2.3 verify writes (unit tests)
    - [ ] 2.4 verify reads and writes (unit tests)
    - [ ] 2.5 verify eviction implementation (unit tests)

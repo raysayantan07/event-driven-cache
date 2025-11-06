@@ -21,7 +21,48 @@ public:
     virtual ~ICache() = default;
 };
 
+// --------------------- MSHR ENTRY ---------------------
+struct MSHREntry {
+    uint64_t blk_tag = 0;
+    bool     valid   = false;
+    // TDOD: waiters queue? 
+};
 
+struct MSHR {
+    vector<MSHREntry> table;
+    int mshr_count;
+    MSHR(int mshr_count) : mshr_count(mshr_count) {
+        table.resize(mshr_count);
+        for ( auto& entry : table) {
+            entry.blk_tag = 0;
+            entry.valid   = false;
+        }
+    }
+    void allocate_mshr(uint64_t blk_tag){
+        for (auto& entry : table) {
+            if (entry.valid == false) {
+                entry.valid = true;
+                entry.blk_tag = blk_tag;
+                break;
+            }
+        }
+    }
+    void deallocate_mshr(uint64_t blk_tag){
+        for (auto& entry : table) {
+            if (entry.blk_tag == blk_tag) {
+                entry.blk_tag = 0;
+                entry.valid = false;
+                break;
+            }
+        }
+    }
+    bool is_mshr_present(uint64_t blk_tag){
+        for (auto& entry : table){
+            if (blk_tag == entry.blk_tag && entry.valid) return true;
+        }
+        return false;
+    }
+};
 
 // -------------------- CacheLine -----------------------
 template <typename CoherencePolicy>
@@ -58,7 +99,8 @@ class Cache : public ICache {
     Logger& logger;
     CoherencePolicy coherence;
     vector<SetType> sets;
-                          //
+    MSHR mshr;
+
     // cache size parameters 
     size_t mm_size;
     size_t blk_size;
@@ -96,7 +138,7 @@ public:
 
 template<typename CoherencePolicy, template <typename> class EvictionPolicy>
 Cache<CoherencePolicy, EvictionPolicy>::Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, EventSimulator& sim, SnoopBus& bus, Logger& logger) 
-    : cache_name(std::move(name)), blk_size(blk_size), num_sets(num_sets), assoc(assoc), mm_size(mm_size), rd_hit_lt(rd_hit_lt), rd_miss_lt(rd_miss_lt), wr_hit_lt(wr_hit_lt), wr_miss_lt(wr_miss_lt), sets(num_sets, SetType(assoc)), sim(sim), bus(bus), logger(logger) {
+    : cache_name(std::move(name)), mshr(16), blk_size(blk_size), num_sets(num_sets), assoc(assoc), mm_size(mm_size), rd_hit_lt(rd_hit_lt), rd_miss_lt(rd_miss_lt), wr_hit_lt(wr_hit_lt), wr_miss_lt(wr_miss_lt), sets(num_sets, SetType(assoc)), sim(sim), bus(bus), logger(logger) {
         blk_offset = log2(blk_size);
         set_bits   = log2(num_sets);
         tag_bits   = log2(mm_size) - (blk_offset + set_bits);
@@ -154,6 +196,12 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
     // ----------------- READ MISS -------------- 
     else {
         logger.log(sim.now(), "Cache_" + cache_name + " :: READ_MISS for addr(" + to_string(addr) + ")");
+        // if MSHR entry already present, merge miss, no need to schedule another miss 
+        if (mshr.is_mshr_present(tag)) 
+            return;
+
+        // if MSHR entry not present, create new miss and new MSHR entry 
+        mshr.allocate_mshr(tag);
         uint64_t snoop_lt = bus.broadcast_snoop(this, false, addr);
         sim.schedule(sim.now() + snoop_lt + rd_miss_lt, [this, &set, tag, addr]() mutable {
             int victim_idx = set.choose_victim();
@@ -163,6 +211,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
             coherence.on_read_miss(line->coherence_state);
             set.touch(victim_idx);
             logger.log(sim.now(), "Cache_" + cache_name + " :: LINE RETURNED for addr(" + to_string(addr) + ")");
+            mshr.deallocate_mshr(tag);
             });
     }
 
