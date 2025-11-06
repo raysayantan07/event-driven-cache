@@ -14,12 +14,16 @@ A small, configurable event-driven cache simulator with pluggable coherence and 
 ## ALPHA build objectives
 1. Basic cache implementation with one eviction and one coherence policy
    - [x] basic cache + one eviction + one coherence policy
-2. Instantiate a single cache and create unit tests:
+2. Instantiate a single cache and verify the following:
    - [x] 2.1 verify read misses and hits
-   - [x] 2.2 miss coalescing for in-flight misses (unit tests)
-   - [ ] 2.3 verify writes (unit tests)
-   - [ ] 2.4 verify reads and writes (unit tests)
-   - [ ] 2.5 verify eviction implementation (unit tests)
+   - [x] 2.2 miss coalescing for in-flight misses 
+   - [x] 2.3 verify LRU eviction implementation
+   - [ ] 2.4 verify writes
+   - [ ] 2.5 verify reads and writes
+3. Create a proper Test bench system:
+   - [ ] 3.1 Cache driver (CPU)
+   - [ ] 3.2 Cache driver (MM)
+   - [ ] 3.3 Create Unit Tests 
 
 Notes:
 - Goal: produce a tested single-cache simulator. Implement miss coalescing to avoid duplicate snoops for in-flight misses.

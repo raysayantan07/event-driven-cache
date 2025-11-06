@@ -184,6 +184,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
 
     auto& set  = sets[set_idx];
     auto* line = find_line(set_idx, tag);
+    logger.log(sim.now(), "Cache_" + cache_name + " :: READ_REQUEST on SET[" + to_string(set_idx) + "] with TAG[" + to_string(tag) + "]");
     
     // ----------------- READ HIT --------------- 
     if (line && coherence.can_read(line->coherence_state)){

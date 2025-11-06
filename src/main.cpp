@@ -25,8 +25,13 @@ int main() {
     Cache<MESICoherence, LRUEviction> L1("L1A", blk_size, num_sets, assoc, mm_size, rd_hit_lt, rd_miss_lt, wr_hit_lt, wr_miss_lt, sim, bus, logger); 
 
     sim.schedule(0, [&](){ L1.read(0x1000); });
+    sim.schedule(1, [&](){ L1.read(0x2000); });
+    sim.schedule(2, [&](){ L1.read(0x3000); });
+    sim.schedule(3, [&](){ L1.read(0x4000); });
+    sim.schedule(4, [&](){ L1.read(0x5000); });
     sim.schedule(10, [&](){ L1.read(0x1000); });
     sim.schedule(50, [&](){ L1.read(0x1000); });
+    sim.schedule(51, [&](){ L1.read(0x2000); });
     sim.run_sim();
     return 0;
 }
