@@ -18,12 +18,13 @@ A small, configurable event-driven cache simulator with pluggable coherence and 
    - [x] 2.1 verify read misses and hits
    - [x] 2.2 miss coalescing for in-flight misses 
    - [x] 2.3 verify LRU eviction implementation
-   - [ ] 2.4 verify writes
-   - [ ] 2.5 verify reads and writes
+   - [x] 2.4 verify writes
+   - [x] 2.5 verify reads and writes
 3. Create a proper Test bench system:
    - [ ] 3.1 Cache driver (CPU)
    - [ ] 3.2 Cache driver (MM)
    - [ ] 3.3 Create Unit Tests 
+   - [x] 3.4 Improve Logging system
 
 Notes:
 - Goal: produce a tested single-cache simulator. Implement miss coalescing to avoid duplicate snoops for in-flight misses.
