@@ -1,0 +1,64 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title></title>
+<style type="text/css">
+.ansi2html-content { display: inline; white-space: pre-wrap; word-wrap: break-word; }
+.body_foreground { color: #AAAAAA; }
+.body_background { background-color: #000000; }
+.inv_foreground { color: #000000; }
+.inv_background { background-color: #AAAAAA; }
+.ansi31 { color: #aa0000; }
+.ansi32 { color: #00aa00; }
+.ansi33 { color: #aa5500; }
+.ansi35 { color: #E850A8; }
+.ansi36 { color: #00aaaa; }
+</style>
+</head>
+<body class="body_foreground body_background" style="font-size: normal;" >
+<pre class="ansi2html-content">
+@ 0       Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
+@ 0       Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(4096)</span>
+@ 1       Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(8192) --&gt; on SET[0] with TAG[8]</span>
+@ 1       Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(8192)</span>
+@ 2       Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(12288) --&gt; on SET[0] with TAG[12]</span>
+@ 2       Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(12288)</span>
+@ 3       Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(16384) --&gt; on SET[0] with TAG[16]</span>
+@ 3       Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(16384)</span>
+@ 4       Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(20480) --&gt; on SET[0] with TAG[20]</span>
+@ 4       Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(20480)</span>
+@ 10      Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
+@ 10      Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(4096)</span>
+@ 10      Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(4096) exists in MSHR --&gt; COALESCED</span>
+@ 17      Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
+@ 18      Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(8192)</span>
+@ 19      Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(12288)</span>
+@ 20      Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(16384)</span>
+@ 21      Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(20480)</span>
+@ 50      Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
+@ 50      Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(4096)</span>
+@ 51      Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(8192) --&gt; on SET[0] with TAG[8]</span>
+@ 51      Cache_L1A :: <span class="ansi32"> --&gt; READ_HIT for addr(8192)</span>
+@ 56      Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(8192)</span>
+@ 67      Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
+@ 100     Cache_L1A :: <span class="ansi35">WRITE_REQUEST for addr(8192) --&gt; on SET[0] with TAG[8]</span>
+@ 100     Cache_L1A :: <span class="ansi32"> --&gt; WRITE_HIT for addr(8192)</span>
+@ 107     Cache_L1A :: <span class="ansi33">LINE WRITTEN for addr(8192) -- (state:S --&gt; M)</span>
+@ 120     Cache_L1A :: <span class="ansi35">WRITE_REQUEST for addr(8208) --&gt; on SET[0] with TAG[8]</span>
+@ 120     Cache_L1A :: <span class="ansi32"> --&gt; WRITE_HIT for addr(8208)</span>
+@ 125     Cache_L1A :: <span class="ansi33">LINE WRITTEN for addr(8208) -- (state:M --&gt; M)</span>
+@ 130     Cache_L1A :: <span class="ansi35">WRITE_REQUEST for addr(24592) --&gt; on SET[0] with TAG[24]</span>
+@ 130     Cache_L1A :: <span class="ansi31"> --&gt; WRITE_MISS for addr(24592)</span>
+@ 140     Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(24592) --&gt; on SET[0] with TAG[24]</span>
+@ 140     Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(24592)</span>
+@ 140     Cache_L1A :: <span class="ansi31"> --&gt; READ_MISS for addr(24592) exists in MSHR --&gt; COALESCED</span>
+@ 147     Cache_L1A :: <span class="ansi33">LINE WRITTEN for addr(24592)</span>
+@ 150     Cache_L1A :: <span class="ansi36">READ_REQUEST for addr(24592) --&gt; on SET[0] with TAG[24]</span>
+@ 150     Cache_L1A :: <span class="ansi32"> --&gt; READ_HIT for addr(24592)</span>
+@ 155     Cache_L1A :: <span class="ansi33">LINE RETURNED for addr(24592)</span>
+
+</pre>
+</body>
+
+</html>
