@@ -5,6 +5,15 @@ struct MESICoherence {
     enum class StateType { I, S, E, M };
     static constexpr StateType default_state() { return StateType::I; }
 
+    std::string state_to_string(StateType state){
+        switch(state){
+            case StateType::I: return "I";
+            case StateType::M: return "M";
+            case StateType::E: return "E";
+            case StateType::S: return "S";
+        }
+    }
+
     bool can_read(const StateType& state) const {
         return state != StateType::I;
     }

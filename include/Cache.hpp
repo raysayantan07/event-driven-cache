@@ -184,11 +184,12 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
 
     auto& set  = sets[set_idx];
     auto* line = find_line(set_idx, tag);
-    logger.log(sim.now(), "Cache_" + cache_name + " :: READ_REQUEST on SET[" + to_string(set_idx) + "] with TAG[" + to_string(tag) + "]");
+    logger.log(sim.now(), "Cache_" + cache_name + " :: READ_REQUEST for addr(" + to_string(addr) + 
+                          ") --> on SET[" + to_string(set_idx) + "] with TAG[" + to_string(tag) + "]");
     
     // ----------------- READ HIT --------------- 
     if (line && coherence.can_read(line->coherence_state)){
-        logger.log(sim.now(), "Cache_" + cache_name + " :: READ_HIT for addr(" + to_string(addr) + ")");
+        logger.log(sim.now(), "Cache_" + cache_name + " ::  --> READ_HIT for addr(" + to_string(addr) + ")");
         sim.schedule(sim.now() + rd_hit_lt, [this, &set, line, addr]() mutable {
             set.touch(index_in_set(set, *line));
             logger.log(sim.now(), "Cache_" + cache_name + " :: LINE RETURNED for addr(" + to_string(addr) + ")");
@@ -196,10 +197,12 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
     }
     // ----------------- READ MISS -------------- 
     else {
-        logger.log(sim.now(), "Cache_" + cache_name + " :: READ_MISS for addr(" + to_string(addr) + ")");
+        logger.log(sim.now(), "Cache_" + cache_name + " ::  --> READ_MISS for addr(" + to_string(addr) + ")");
         // if MSHR entry already present, merge miss, no need to schedule another miss 
-        if (mshr.is_mshr_present(tag)) 
+        if (mshr.is_mshr_present(tag)) {
+            logger.log(sim.now(), "Cache_" + cache_name + " ::  --> READ_MISS for addr(" + to_string(addr) + ") exists in MSHR --> COALESCED");
             return;
+        }
 
         // if MSHR entry not present, create new miss and new MSHR entry 
         mshr.allocate_mshr(tag);
@@ -228,15 +231,18 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
 
     auto& set  = sets[set_idx];
     auto* line = find_line(set_idx, tag);
+    logger.log(sim.now(), "Cache_" + cache_name + " :: WRITE_REQUEST for addr(" + to_string(addr) + 
+                          ") --> on SET[" + to_string(set_idx) + "] with TAG[" + to_string(tag) + "]");
 
     // ----------------- WRITE HIT --------------- 
     if (line){
-        logger.log(sim.now(), "Cache_" + cache_name + " :: WRITE_HIT for addr(" + to_string(addr) + ")");
+        logger.log(sim.now(), "Cache_" + cache_name + " ::  --> WRITE_HIT for addr(" + to_string(addr) + ")");
         if (coherence.can_write(line->coherence_state)){ // Line is in I, M or E state
             sim.schedule(sim.now() + wr_hit_lt, [this, &set, line, addr]() mutable {
                 set.touch(index_in_set(set, *line));
                 coherence.on_write(line->coherence_state); // changes to M
-                logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ")");
+                logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) 
+                           + ") -- (state:" + coherence.state_to_string(line->coherence_state) + " --> M)");
                 });
         } 
         else{  // Line is in S state
@@ -244,13 +250,21 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
             sim.schedule(sim.now() + snoop_lt + wr_hit_lt, [this, &set, line, addr]() mutable {
                 set.touch(index_in_set(set, *line));
                 coherence.on_write(line->coherence_state); // changes to M
-                logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ")");
+                logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ") -- (state:S --> M)");
                 });
         }
     }
     // ----------------- WRITE MISS --------------- 
     else {
-        logger.log(sim.now(), "Cache_" + cache_name + " :: WRITE_MISS for addr(" + to_string(addr) + ")");
+        logger.log(sim.now(), "Cache_" + cache_name + " ::  --> WRITE_MISS for addr(" + to_string(addr) + ")");
+        // if MSHR entry already present, merge miss, no need to schedule another miss 
+        if (mshr.is_mshr_present(tag)){ 
+            logger.log(sim.now(), "Cache_" + cache_name + " ::  --> WRITE_MISS for addr(" + to_string(addr) + ") exists in MSHR --> COALESCED");
+            return;
+        }
+
+        // if MSHR entry not present, create new miss and new MSHR entry 
+        mshr.allocate_mshr(tag);
         uint64_t snoop_lt = bus.broadcast_snoop(this, true, addr); // broadcast Invalidate to other sharers
         sim.schedule(sim.now() + snoop_lt + wr_miss_lt, [this, &set, tag, addr]() mutable {
             int victim_idx = set.choose_victim();
@@ -259,6 +273,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
             line->tag = tag; 
             coherence.on_write(line->coherence_state); // changes to M
             logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ")");
+            mshr.deallocate_mshr(tag);
             });
     }
 }

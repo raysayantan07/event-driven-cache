@@ -32,6 +32,11 @@ int main() {
     sim.schedule(10, [&](){ L1.read(0x1000); });
     sim.schedule(50, [&](){ L1.read(0x1000); });
     sim.schedule(51, [&](){ L1.read(0x2000); });
+    sim.schedule(100, [&](){ L1.write(0x2000); });
+    sim.schedule(120, [&](){ L1.write(0x2010); });
+    sim.schedule(130, [&](){ L1.write(0x6010); });
+    sim.schedule(140, [&](){ L1.read(0x6010); });
+    sim.schedule(150, [&](){ L1.read(0x6010); });
     sim.run_sim();
     return 0;
 }
