@@ -20,21 +20,21 @@ A small, configurable event-driven cache simulator with pluggable coherence and 
    - [x] 2.3 verify LRU eviction implementation
    - [x] 2.4 verify writes
    - [x] 2.5 verify reads and writes
-3. Create a proper Test bench system:
-   - [ ] 3.1 Cache driver (CPU)
-   - [ ] 3.2 Cache driver (MM)
-   - [ ] 3.3 Create Unit Tests 
-   - [x] 3.4 Improve Logging system
+   - [x] 2.6 Improve Logging system
 
 Notes:
 - Goal: produce a tested single-cache simulator. Implement miss coalescing to avoid duplicate snoops for in-flight misses.
 
 ## BETA build objectives
 1. Instantiate two coherent caches and complete the following:
-   - [ ] 1.1 Implement correct snooping timing mechanics based on successful/failed snoops
-   - [ ] 1.2 verify snooping on reads (unit tests)
+   - [x] 1.1 Implement correct snooping timing mechanics based on successful/failed snoops
+   - [x] 1.2 verify snooping on reads (unit tests)
    - [ ] 1.3 verify snooping on writes (unit tests)
    - [ ] 1.4 verify snooping on reads + writes (unit tests)
+2. Create a proper Test bench system:
+   - [ ] 2.1 Cache driver (CPU)
+   - [ ] 2.2 Cache driver (MM)
+   - [ ] 2.3 Create Unit Tests 
 
 Notes:
 - Goal: ensure correctness of snoop interactions and timing between caches; add cross-cache unit tests.
@@ -45,7 +45,7 @@ Notes:
 - [ ] 3. Latest eviction policies
 
 ## Current sprint / focus
-- Implement miss coalescing and add unit tests for: miss coalescing, writes, read+write, eviction.
+- Instantiate two caches and verify whether coherence snooping protocol works.
 - Instrumentation: log snoop latencies and event scheduling times to validate timing behavior.
 
 ## Backlog / Nice-to-have
