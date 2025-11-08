@@ -96,23 +96,15 @@ class Cache : public ICache {
     using LineType = Line<CoherencePolicy>;
     using SetType  = Set<LineType, EvictionPolicy>;
 
-    EventSimulator& sim;  // cache pushes internal events to event_q
-    SnoopBus& bus;
-    Logger& logger;
     CoherencePolicy coherence;
-    vector<SetType> sets;
-    MSHR mshr;
 
+    string cache_name;
+    MSHR mshr;
     // cache size parameters 
-    size_t mm_size;
     size_t blk_size;
     size_t num_sets;
     size_t assoc; 
-
-    // addr bits 
-    int blk_offset;
-    int set_bits;
-    int tag_bits;
+    size_t mm_size;
 
     // latency per action
     int rd_hit_lt;
@@ -121,8 +113,19 @@ class Cache : public ICache {
     int wr_miss_lt;
     int snoop_lt;
     int snoop_hit_lt;
-    int cache_id;
-    string cache_name;
+
+    vector<SetType> sets;
+
+    EventSimulator& sim;  // cache pushes internal events to event_q
+    SnoopBus& bus;
+    Logger& logger;
+
+
+    // addr bits 
+    int blk_offset;
+    int set_bits;
+    int tag_bits;
+
 
 public:
     Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, int snoop_lt, int snoop_hit_lt, EventSimulator& sim, SnoopBus& bus, Logger& logger);
@@ -223,7 +226,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::rd_miss_callback(bool snoop_success
     uint64_t tag     = (addr >> (blk_offset + set_bits)) & ((1 << tag_bits) - 1); 
 
     auto& set  = sets[set_idx];
-    auto* line = find_line(set_idx, tag);
+    //auto* line = find_line(set_idx, tag);
     int miss_latency = ((snoop_success == true) ? snoop_hit_lt : rd_miss_lt);
     sim.schedule(sim.now() + miss_latency, [this, &set, tag, addr]() mutable {
         int victim_idx = set.choose_victim();
@@ -291,7 +294,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::wr_miss_callback(bool snoop_success
     uint64_t tag     = (addr >> (blk_offset + set_bits)) & ((1 << tag_bits) - 1); 
 
     auto& set  = sets[set_idx];
-    auto* line = find_line(set_idx, tag);
+    //auto* line = find_line(set_idx, tag);
     int miss_latency = ((snoop_success == true) ? snoop_hit_lt : wr_miss_lt);
     sim.schedule(sim.now() + miss_latency, [this, &set, tag, addr]() mutable {
         int victim_idx = set.choose_victim();
@@ -333,6 +336,7 @@ bool Cache<CoherencePolicy, EvictionPolicy>::snoop_write(uint64_t addr){
         coherence.on_snoop_write(line->coherence_state);
         return true;
     }
+    return false;
 }
 
 // helper
