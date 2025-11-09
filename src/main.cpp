@@ -7,8 +7,8 @@
 
 int main() {
     EventSimulator sim;
-    SnoopBus bus(sim);
     ConsoleLogger logger;
+    SnoopBus bus(sim, logger);
 
     size_t blk_size = 64;
     size_t num_sets = 16;
@@ -49,6 +49,15 @@ int main() {
     sim.schedule(25, [&](){ L1B.read(0x1000); });
     sim.schedule(50, [&](){ L1A.read(0x2000); });
     sim.schedule(70, [&](){ L1B.read(0x2000); });
+    sim.schedule(90, [&](){ L1B.write(0x2000); });
+    sim.schedule(110, [&](){ L1A.read(0x2000); });
+    sim.schedule(130, [&](){ L1A.write(0x3000); });
+    sim.schedule(150, [&](){ L1B.write(0x3000); });
+    sim.schedule(170, [&](){ L1B.write(0x3000); });
+    sim.schedule(200, [&](){ L1A.read(0x4000); });
+    sim.schedule(220, [&](){ L1B.read(0x4000); });
+    sim.schedule(225, [&](){ L1B.read(0x4000); });
+
 
 
     sim.run_sim();

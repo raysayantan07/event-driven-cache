@@ -215,7 +215,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
 
         // if MSHR entry not present, create new miss and new MSHR entry 
         mshr.allocate_mshr(tag);
-        bus.broadcast_snoop(this, false, addr, snoop_lt);
+        bus.broadcast_snoop(this, false, true, addr, snoop_lt);
     }
 
 }
@@ -266,8 +266,8 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
                 });
         } 
         else{  // Line is in S state
-            bus.broadcast_snoop(this, true, addr, snoop_lt); // broadcast Invalidate to other sharers
-            sim.schedule(sim.now() + snoop_lt + wr_hit_lt, [this, &set, line, addr]() mutable {
+            bus.broadcast_snoop(this, true, false, addr, snoop_lt); // broadcast Invalidate to other sharers
+            sim.schedule(sim.now() + wr_hit_lt, [this, &set, line, addr]() mutable {
                 set.touch(index_in_set(set, *line));
                 coherence.on_write(line->coherence_state); // changes to M
                 logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ") -- (state:S --> M)");
@@ -285,7 +285,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
 
         // if MSHR entry not present, create new miss and new MSHR entry 
         mshr.allocate_mshr(tag);
-        bus.broadcast_snoop(this, true, addr, snoop_lt); // broadcast Invalidate to other sharers
+        bus.broadcast_snoop(this, true, true, addr, snoop_lt); // broadcast Invalidate to other sharers
     }
 }
 template<typename CoherencePolicy, template <typename> class EvictionPolicy>
@@ -302,7 +302,7 @@ void Cache<CoherencePolicy, EvictionPolicy>::wr_miss_callback(bool snoop_success
         line->valid = true;
         line->tag = tag; 
         coherence.on_write(line->coherence_state); // changes to M
-        logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ")");
+        logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ") -- (state:I --> M)");
         mshr.deallocate_mshr(tag);
         });
 }
