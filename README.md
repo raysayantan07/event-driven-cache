@@ -11,6 +11,7 @@ This is a fast model with no actual data transfer.
 - Cache core with read/write/snoop hooks
 - Pluggable coherence and eviction policies (e.g. MESI, LRU)
 - Simple Logger interface and ConsoleLogger
+- Bus with queued grant requests.
 - Roadmap and planned unit tests (see `ROADMAP.md`)
 
 ## Quickstart (dev container: Ubuntu 24.04)

@@ -13,7 +13,6 @@
 .ansi32 { color: #00aa00; }
 .ansi33 { color: #aa5500; }
 .ansi34 { color: #0000aa; }
-.ansi35 { color: #E850A8; }
 .ansi36 { color: #00aaaa; }
 </style>
 </head>
@@ -21,59 +20,27 @@
 <pre class="ansi2html-content">
 @ 0       <span class="ansi34">Cache_L1A</span> :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
 @ 0       <span class="ansi34">Cache_L1A</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(4096)</span>
+@ 0       Bus :: processing (type = 0) from Cache_L1A addr(0x1000)
 @ 1       <span class="ansi31">Cache_L1B</span> :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
 @ 1       <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(4096)</span>
 @ 1       <span class="ansi34">Cache_L1A</span> :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
 @ 1       <span class="ansi34">Cache_L1A</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(4096)</span>
 @ 1       <span class="ansi34">Cache_L1A</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(4096) exists in MSHR --&gt; COALESCED</span>
-@ 2       <span class="ansi34">Cache_L1A</span> :: SNOOPED Cache_L1B for addr(4096) --&gt; SNOOP FAILED!
-@ 3       <span class="ansi31">Cache_L1B</span> :: SNOOPED Cache_L1A for addr(4096) --&gt; SNOOP FAILED!
-@ 17      <span class="ansi34">Cache_L1A</span> :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
-@ 18      <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
+@ 2       Bus :: Cache_L1A snooped Cache_L1B addr(0x1000) --&gt; SNOOP_MISS
+@ 2       Bus :: processing (type = 0) from Cache_L1B addr(0x1000)
+@ 4       Bus :: Cache_L1B snooped Cache_L1A addr(0x1000) --&gt; SNOOP_MISS
+@ 4       Bus :: processing (type = 2) from Cache_L1A addr(0x1000)
+@ 19      Bus :: Data service completed for Cache_L1A addr(0x1000)
+@ 19      <span class="ansi34">Cache_L1A</span> :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
+@ 19      Bus :: processing (type = 2) from Cache_L1B addr(0x1000)
 @ 20      <span class="ansi34">Cache_L1A</span> :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
 @ 20      <span class="ansi34">Cache_L1A</span> :: <span class="ansi32"> --&gt; READ_HIT for addr(4096)</span>
 @ 25      <span class="ansi31">Cache_L1B</span> :: <span class="ansi36">READ_REQUEST for addr(4096) --&gt; on SET[0] with TAG[4]</span>
-@ 25      <span class="ansi31">Cache_L1B</span> :: <span class="ansi32"> --&gt; READ_HIT for addr(4096)</span>
+@ 25      <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(4096)</span>
+@ 25      <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(4096) exists in MSHR --&gt; COALESCED</span>
 @ 25      <span class="ansi34">Cache_L1A</span> :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
-@ 30      <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
-@ 50      <span class="ansi34">Cache_L1A</span> :: <span class="ansi36">READ_REQUEST for addr(8192) --&gt; on SET[0] with TAG[8]</span>
-@ 50      <span class="ansi34">Cache_L1A</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(8192)</span>
-@ 52      <span class="ansi34">Cache_L1A</span> :: SNOOPED Cache_L1B for addr(8192) --&gt; SNOOP FAILED!
-@ 67      <span class="ansi34">Cache_L1A</span> :: <span class="ansi33">LINE RETURNED for addr(8192)</span>
-@ 70      <span class="ansi31">Cache_L1B</span> :: <span class="ansi36">READ_REQUEST for addr(8192) --&gt; on SET[0] with TAG[8]</span>
-@ 70      <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(8192)</span>
-@ 72      <span class="ansi31">Cache_L1B</span> :: SNOOPED Cache_L1A for addr(8192) --&gt; SNOOP SUCCESS!
-@ 82      <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE RETURNED for addr(8192)</span>
-@ 90      <span class="ansi31">Cache_L1B</span> :: <span class="ansi35">WRITE_REQUEST for addr(8192) --&gt; on SET[0] with TAG[8]</span>
-@ 90      <span class="ansi31">Cache_L1B</span> :: <span class="ansi32"> --&gt; WRITE_HIT for addr(8192)</span>
-@ 92      <span class="ansi31">Cache_L1B</span> :: SNOOPED Cache_L1A for addr(8192) --&gt; SNOOP SUCCESS!
-@ 95      <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE WRITTEN for addr(8192) -- (state:S --&gt; M)</span>
-@ 110     <span class="ansi34">Cache_L1A</span> :: <span class="ansi36">READ_REQUEST for addr(8192) --&gt; on SET[0] with TAG[8]</span>
-@ 110     <span class="ansi34">Cache_L1A</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(8192)</span>
-@ 112     <span class="ansi34">Cache_L1A</span> :: SNOOPED Cache_L1B for addr(8192) --&gt; SNOOP SUCCESS!
-@ 122     <span class="ansi34">Cache_L1A</span> :: <span class="ansi33">LINE RETURNED for addr(8192)</span>
-@ 130     <span class="ansi34">Cache_L1A</span> :: <span class="ansi35">WRITE_REQUEST for addr(12288) --&gt; on SET[0] with TAG[12]</span>
-@ 130     <span class="ansi34">Cache_L1A</span> :: <span class="ansi31"> --&gt; WRITE_MISS for addr(12288)</span>
-@ 132     <span class="ansi34">Cache_L1A</span> :: SNOOPED Cache_L1B for addr(12288) --&gt; SNOOP FAILED!
-@ 147     <span class="ansi34">Cache_L1A</span> :: <span class="ansi33">LINE WRITTEN for addr(12288) -- (state:I --&gt; M)</span>
-@ 150     <span class="ansi31">Cache_L1B</span> :: <span class="ansi35">WRITE_REQUEST for addr(12288) --&gt; on SET[0] with TAG[12]</span>
-@ 150     <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; WRITE_MISS for addr(12288)</span>
-@ 152     <span class="ansi31">Cache_L1B</span> :: SNOOPED Cache_L1A for addr(12288) --&gt; SNOOP SUCCESS!
-@ 162     <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE WRITTEN for addr(12288) -- (state:I --&gt; M)</span>
-@ 170     <span class="ansi31">Cache_L1B</span> :: <span class="ansi35">WRITE_REQUEST for addr(12288) --&gt; on SET[0] with TAG[12]</span>
-@ 170     <span class="ansi31">Cache_L1B</span> :: <span class="ansi32"> --&gt; WRITE_HIT for addr(12288)</span>
-@ 175     <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE WRITTEN for addr(12288) -- (state:M --&gt; M)</span>
-@ 200     <span class="ansi34">Cache_L1A</span> :: <span class="ansi36">READ_REQUEST for addr(16384) --&gt; on SET[0] with TAG[16]</span>
-@ 200     <span class="ansi34">Cache_L1A</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(16384)</span>
-@ 202     <span class="ansi34">Cache_L1A</span> :: SNOOPED Cache_L1B for addr(16384) --&gt; SNOOP FAILED!
-@ 217     <span class="ansi34">Cache_L1A</span> :: <span class="ansi33">LINE RETURNED for addr(16384)</span>
-@ 220     <span class="ansi31">Cache_L1B</span> :: <span class="ansi36">READ_REQUEST for addr(16384) --&gt; on SET[0] with TAG[16]</span>
-@ 220     <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(16384)</span>
-@ 222     <span class="ansi31">Cache_L1B</span> :: SNOOPED Cache_L1A for addr(16384) --&gt; SNOOP SUCCESS!
-@ 225     <span class="ansi31">Cache_L1B</span> :: <span class="ansi36">READ_REQUEST for addr(16384) --&gt; on SET[0] with TAG[16]</span>
-@ 225     <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(16384)</span>
-@ 225     <span class="ansi31">Cache_L1B</span> :: <span class="ansi31"> --&gt; READ_MISS for addr(16384) exists in MSHR --&gt; COALESCED</span>
-@ 232     <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE RETURNED for addr(16384)</span>
+@ 34      Bus :: Data service completed for Cache_L1B addr(0x1000)
+@ 34      <span class="ansi31">Cache_L1B</span> :: <span class="ansi33">LINE RETURNED for addr(4096)</span>
 
 </pre>
 </body>

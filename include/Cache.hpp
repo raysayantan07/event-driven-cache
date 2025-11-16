@@ -1,4 +1,5 @@
 #pragma once
+#include <codecvt>
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -6,7 +7,7 @@
 #include "EventSimulator.hpp"
 #include "Coherence.hpp"
 #include "Eviction.hpp"
-#include "SnoopBus.hpp"
+#include "Bus.hpp"
 #include "Logger.hpp"
 using namespace std;
 
@@ -117,7 +118,7 @@ class Cache : public ICache {
     vector<SetType> sets;
 
     EventSimulator& sim;  // cache pushes internal events to event_q
-    SnoopBus& bus;
+    Bus& bus;
     Logger& logger;
 
 
@@ -128,7 +129,7 @@ class Cache : public ICache {
 
 
 public:
-    Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, int snoop_lt, int snoop_hit_lt, EventSimulator& sim, SnoopBus& bus, Logger& logger);
+    Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, int snoop_lt, int snoop_hit_lt, EventSimulator& sim, Bus& bus, Logger& logger);
 
     // Main cache functions 
     LineType* find_line(uint64_t set_idx, uint64_t tag);
@@ -146,7 +147,7 @@ public:
 };
 
 template<typename CoherencePolicy, template <typename> class EvictionPolicy>
-Cache<CoherencePolicy, EvictionPolicy>::Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, int snoop_lt, int snoop_hit_lt, EventSimulator& sim, SnoopBus& bus, Logger& logger) 
+Cache<CoherencePolicy, EvictionPolicy>::Cache(string name, size_t blk_size, size_t num_sets, size_t assoc, size_t mm_size, int rd_hit_lt, int rd_miss_lt, int wr_hit_lt, int wr_miss_lt, int snoop_lt, int snoop_hit_lt, EventSimulator& sim, Bus& bus, Logger& logger) 
     : cache_name(std::move(name)), mshr(16), blk_size(blk_size), num_sets(num_sets), assoc(assoc), mm_size(mm_size), rd_hit_lt(rd_hit_lt), rd_miss_lt(rd_miss_lt), wr_hit_lt(wr_hit_lt), wr_miss_lt(wr_miss_lt), snoop_lt(snoop_lt), snoop_hit_lt(snoop_hit_lt), sets(num_sets, SetType(assoc)), sim(sim), bus(bus), logger(logger) {
         blk_offset = log2(blk_size);
         set_bits   = log2(num_sets);
@@ -215,7 +216,14 @@ void Cache<CoherencePolicy, EvictionPolicy>::read(uint64_t addr){
 
         // if MSHR entry not present, create new miss and new MSHR entry 
         mshr.allocate_mshr(tag);
-        bus.broadcast_snoop(this, false, true, addr, snoop_lt);
+        //bus.broadcast_snoop(this, false, true, addr, snoop_lt);
+
+        // request bus_grant for a snoop broadcast 
+        BusReq req(BusReqType::SNOOP_READ, this, addr, snoop_lt); 
+        req.callback = [this, addr](bool snoop_success){
+            this->rd_miss_callback(snoop_success, addr);
+        };
+        bus.request_grant(req);
     }
 
 }
@@ -225,10 +233,12 @@ void Cache<CoherencePolicy, EvictionPolicy>::rd_miss_callback(bool snoop_success
     uint64_t set_idx = (addr >> blk_offset) & ((1 << set_bits) - 1);
     uint64_t tag     = (addr >> (blk_offset + set_bits)) & ((1 << tag_bits) - 1); 
 
-    auto& set  = sets[set_idx];
     //auto* line = find_line(set_idx, tag);
     int miss_latency = ((snoop_success == true) ? snoop_hit_lt : rd_miss_lt);
-    sim.schedule(sim.now() + miss_latency, [this, &set, tag, addr]() mutable {
+
+    BusReq req(BusReqType::READ_MISS_SERVICE, this, addr, miss_latency);
+    req.callback = [this, set_idx, tag, addr](int success){   // success is always true 
+        auto& set = sets[set_idx];
         int victim_idx = set.choose_victim();
         auto* line = &set.ways[victim_idx];
         line->valid = true;
@@ -237,8 +247,8 @@ void Cache<CoherencePolicy, EvictionPolicy>::rd_miss_callback(bool snoop_success
         set.touch(victim_idx);
         logger.log(sim.now(), "Cache_" + cache_name + " :: LINE RETURNED for addr(" + to_string(addr) + ")");
         mshr.deallocate_mshr(tag);
-        });
-    
+    };
+    bus.request_grant(req);
 }
 
 // -------------------------------------------------------
@@ -266,12 +276,15 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
                 });
         } 
         else{  // Line is in S state
-            bus.broadcast_snoop(this, true, false, addr, snoop_lt); // broadcast Invalidate to other sharers
-            sim.schedule(sim.now() + wr_hit_lt, [this, &set, line, addr]() mutable {
-                set.touch(index_in_set(set, *line));
-                coherence.on_write(line->coherence_state); // changes to M
-                logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ") -- (state:S --> M)");
+            //bus.broadcast_snoop(this, true, false, addr, snoop_lt); // broadcast Invalidate to other sharers
+            BusReq req(BusReqType::INVALIDATE, this, addr, snoop_lt);
+            req.callback = [this, &set, line, addr](bool snoop_success) {
+                sim.schedule(sim.now() + wr_hit_lt, [this, &set, line, addr]() mutable {
+                    set.touch(index_in_set(set, *line));
+                    coherence.on_write(line->coherence_state); // changes to M
+                    logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ") -- (state:S --> M)");
                 });
+            };
         }
     }
     // ----------------- WRITE MISS --------------- 
@@ -285,7 +298,12 @@ void Cache<CoherencePolicy, EvictionPolicy>::write(uint64_t addr){
 
         // if MSHR entry not present, create new miss and new MSHR entry 
         mshr.allocate_mshr(tag);
-        bus.broadcast_snoop(this, true, true, addr, snoop_lt); // broadcast Invalidate to other sharers
+        //bus.broadcast_snoop(this, true, true, addr, snoop_lt); // broadcast Invalidate to other sharers
+        BusReq req(BusReqType::SNOOP_WRITE, this, addr, snoop_lt);
+        req.callback = [this, addr](bool snoop_success){
+            this->wr_miss_callback(snoop_success, addr);
+        };
+        bus.request_grant(req);
     }
 }
 template<typename CoherencePolicy, template <typename> class EvictionPolicy>
@@ -293,10 +311,12 @@ void Cache<CoherencePolicy, EvictionPolicy>::wr_miss_callback(bool snoop_success
     uint64_t set_idx = (addr >> blk_offset) & ((1 << set_bits) - 1);
     uint64_t tag     = (addr >> (blk_offset + set_bits)) & ((1 << tag_bits) - 1); 
 
-    auto& set  = sets[set_idx];
     //auto* line = find_line(set_idx, tag);
     int miss_latency = ((snoop_success == true) ? snoop_hit_lt : wr_miss_lt);
-    sim.schedule(sim.now() + miss_latency, [this, &set, tag, addr]() mutable {
+
+    BusReq req(BusReqType::WRITE_MISS_SERVICE, this, addr, miss_latency);
+    req.callback = [this, set_idx, tag, addr](bool success){
+        auto& set = sets[set_idx];
         int victim_idx = set.choose_victim();
         auto* line = &set.ways[victim_idx];
         line->valid = true;
@@ -304,7 +324,8 @@ void Cache<CoherencePolicy, EvictionPolicy>::wr_miss_callback(bool snoop_success
         coherence.on_write(line->coherence_state); // changes to M
         logger.log(sim.now(), "Cache_" + cache_name + " :: LINE WRITTEN for addr(" + to_string(addr) + ") -- (state:I --> M)");
         mshr.deallocate_mshr(tag);
-        });
+    };
+    bus.request_grant(req);
 }
 
 // -------------------------------------------------------

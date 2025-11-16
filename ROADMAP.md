@@ -29,15 +29,22 @@ Notes:
 1. Instantiate two coherent caches and complete the following:
    - [x] 1.1 Implement correct snooping timing mechanics based on successful/failed snoops
    - [x] 1.2 verify snooping on reads (unit tests)
-   - [ ] 1.3 verify snooping on writes (unit tests)
-   - [ ] 1.4 verify snooping on reads + writes (unit tests)
-2. Create a proper Test bench system:
+   - [x] 1.3 verify snooping on writes (unit tests)
+   - [x] 1.4 verify snooping on reads + writes (unit tests)
+2. MAJOR: Revamp Bus, and schedule snoops and data transfers only when bus is free
+   - [x] 2.1 Rewrite Bus
+   - [x] 2.2 Verify reads/writes on single cache 
+   - [x] 2.3 Verify snoop reads on dual cache 
+   - [ ] 2.4 Verify snoop writes on dual cache 
+   - [ ] 2.5 Verify snoop reads + writes on dual cache 
+3. Create a proper Test bench system:
    - [ ] 2.1 Cache driver (CPU)
    - [ ] 2.2 Cache driver (MM)
    - [ ] 2.3 Create Unit Tests 
 
 Notes:
 - Goal: ensure correctness of snoop interactions and timing between caches; add cross-cache unit tests.
+- Issues: Initial Bus design was servicing all requests in parallel, which is not realistic. This has to be redesigned such that all actions have to be granted bus access in order to execute. 
 
 ## v1.0 build objectives
 - [ ] 1. Multi-level cache

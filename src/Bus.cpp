@@ -1,9 +1,10 @@
 #include "Bus.hpp"
 #include "Cache.hpp"
+#include <ios>
 #include <sstream>
 
-Bus::Bus(EventSimulator& sim_, Logger& logger_)
-    : sim(sim_), logger(logger_) {}
+Bus::Bus(EventSimulator& sim, Logger& logger) 
+    : sim(sim), logger(logger) {}
 
 void Bus::register_cache(ICache* cache) {
     caches.push_back(cache);
@@ -13,13 +14,14 @@ void Bus::request_grant(const BusReq& req) {
     queue.push_back(req);
     if (!bus_busy) {
         bus_busy = true;
-        // Schedule process_next to run at current sim time
+        // schedule the next process 
         sim.schedule(sim.now(), [this](){ this->process_next(); });
     }
 }
 
+// Call this function whenever some bus grant request ends 
 void Bus::process_next() {
-    if (queue.empty()) {
+    if (queue.empty()){
         bus_busy = false;
         return;
     }
@@ -28,13 +30,13 @@ void Bus::process_next() {
     queue.pop_front();
 
     std::ostringstream oss;
-    oss << "BUS :: Processing " << static_cast<int>(req.type)
-        << " from Cache_" << req.source->name()
+    oss << "Bus :: processing (type = " << static_cast<int>(req.type)
+        << ") from Cache_" << req.source->name() 
         << " addr(0x" << std::hex << req.addr << std::dec << ")";
     logger.log(sim.now(), oss.str());
 
-    // Execute based on request type
-    switch (req.type) {
+    //Execute based on request type 
+    switch(req.type){
         case BusReqType::SNOOP_READ:
             execute_snoop(req);
             break;
@@ -53,140 +55,150 @@ void Bus::process_next() {
     }
 }
 
-void Bus::execute_snoop(const BusReq& req) {
-    // Count target caches (all except source)
+void Bus::execute_snoop(const BusReq& req){
+    // count how many target caches for snoop 
     int targets = 0;
-    for (auto* c : caches) {
-        if (c != req.source) ++targets;
+    for (auto* cache : caches){
+        if (cache != req.source) ++targets;
     }
-
-    // Shared state for aggregating snoop responses
+    
+    // shared state for aggregating snoop responses 
     struct SnoopState {
         BusReq req;
         int remaining = 0;
-        bool any_success = false;
+        bool any_success = false; 
         Bus* bus = nullptr;
     };
     auto state = std::make_shared<SnoopState>();
     state->req = req;
     state->bus = this;
-    state->remaining = targets;
+    state->remaining = targets; 
 
-    // If no other caches, complete immediately after delay
-    if (targets == 0) {
-        sim.schedule(sim.now() + req.delay, [state]() {
-            if (state->req.callback) {
-                state->req.callback(false);  // no data found
+    // if no other caches, complete immediately after delay 
+    if (targets == 0){
+        sim.schedule(sim.now() + req.delay, [state](){
+            if (state->req.callback){
+                state->req.callback(false);  // no data found 
             }
-            // Continue with next bus request
-            state->bus->sim.schedule(state->bus->sim.now(), [bus = state->bus](){ bus->process_next(); });
+            // continue with next bus request 
+            state->bus->sim.schedule(state->bus->sim.now(), [state](){ state->bus->process_next(); });
         });
         return;
     }
 
-    // Schedule snoop to each target cache
+    // else, schedule snoop to each target cache 
     for (auto* cache : caches) {
         if (cache == req.source) continue;
 
-        sim.schedule(sim.now() + req.delay, [cache, state]() {
-            bool snoop_success = false;
+        sim.schedule(sim.now() + req.delay, [cache, state](){
+            bool snoop_success = false; 
             if (state->req.type == BusReqType::SNOOP_WRITE || state->req.type == BusReqType::INVALIDATE) {
                 snoop_success = cache->snoop_write(state->req.addr);
             } else {
                 snoop_success = cache->snoop_read(state->req.addr);
             }
+            if (snoop_success)  state->any_success = true; 
 
-            if (snoop_success) {
-                state->any_success = true;
-            }
-
-            // Log snoop response
+            // log snoop response 
             {
                 std::ostringstream oss;
-                oss << "BUS :: Cache_" << state->req.source->name()
+                oss << "Bus :: Cache_" << state->req.source->name()
                     << " snooped Cache_" << cache->name()
-                    << " addr(0x" << std::hex << state->req.addr << std::dec << ") --> "
-                    << (snoop_success ? "HIT" : "MISS");
+                    << " addr(0x" << std::hex << state->req.addr << std::dec            
+                    << ") --> " << (snoop_success ? "SNOOP_HIT" : "SNOOP_MISS");
                 state->bus->logger.log(state->bus->sim.now(), oss.str());
             }
 
-            // Last responder triggers completion
-            if (--state->remaining == 0) {
-                state->bus->sim.schedule(state->bus->sim.now(), [state]() {
+            // last responder triggers completion of SNOOP broadcast 
+            if (--(state->remaining) == 0) {
+                state->bus->sim.schedule(state->bus->sim.now(), [state](){
                     if (state->req.callback) {
                         state->req.callback(state->any_success);
                     }
-                    // Continue with next bus request
-                    state->bus->sim.schedule(state->bus->sim.now(), [bus = state->bus](){ bus->process_next(); });
+                    // continue with next bus request 
+                    state->bus->sim.schedule(state->bus->sim.now(), [state](){ state->bus->process_next(); });
                 });
             }
         });
     }
 }
 
+// TODO : for now this simulates main memory. Connect top/main_mem module later 
 void Bus::execute_data_service(const BusReq& req) {
-    // Simulates main memory or L2 serving the data
-    sim.schedule(sim.now() + req.delay, [this, req]() {
+    // Simulates Main memory serving the data 
+    sim.schedule(sim.now() + req.delay, [this, req](){
         std::ostringstream oss;
-        oss << "BUS :: Data service completed for Cache_" << req.source->name()
+        oss << "Bus :: Data service completed for Cache_" << req.source->name()
             << " addr(0x" << std::hex << req.addr << std::dec << ")";
         logger.log(sim.now(), oss.str());
 
-        if (req.callback) {
-            req.callback(true);  // data always successfully served
-        }
-        // Continue with next bus request
-        this->sim.schedule(this->sim.now(), [this](){ this->process_next(); });
+        if(req.callback) req.callback(true); // true because we assume data always available at higher level 
+     
+        // Continue with next bus request 
+        sim.schedule(sim.now(), [this](){ this->process_next(); });
     });
 }
 
-void Bus::execute_invalidate(const BusReq& req) {
-    // Broadcast invalidate to all caches except source
+void Bus::execute_invalidate(const BusReq& req){
+    // broadcast invalidate to all caches except source 
     int targets = 0;
-    for (auto* c : caches) {
-        if (c != req.source) ++targets;
+    for (auto* cache : caches){
+        if (cache != req.source) ++targets;
     }
-
-    struct InvalidateState {
+    
+    struct InavlidateState {
         BusReq req;
         int remaining = 0;
         Bus* bus = nullptr;
     };
-    auto state = std::make_shared<InvalidateState>();
-    state->req = req;
+    auto state = std::make_shared<InavlidateState>();
     state->bus = this;
-    state->remaining = targets;
+    state->remaining = targets; 
+    state->req = req; 
 
+    // if there are no other caches, complete the request immediately
     if (targets == 0) {
         sim.schedule(sim.now() + req.delay, [state]() {
-            if (state->req.callback) {
-                state->req.callback(true);
-            }
-            state->bus->sim.schedule(state->bus->sim.now(), [bus = state->bus](){ bus->process_next(); });
+            if (state->req.callback) state->req.callback(false);
+            state->bus->sim.schedule(state->bus->sim.now(), [state]() { state->bus->process_next(); });
         });
         return;
     }
 
-    for (auto* cache : caches) {
+    for ( auto* cache : caches ) {
         if (cache == req.source) continue;
 
         sim.schedule(sim.now() + req.delay, [cache, state]() {
-            cache->snoop_write(state->req.addr);  // treat invalidate as write snoop
-
+            cache->snoop_write(state->req.addr); // invalidate is a form of snoop_write 
+            
             std::ostringstream oss;
-            oss << "BUS :: Cache_" << state->req.source->name()
-                << " invalidated Cache_" << cache->name()
-                << " addr(0x" << std::hex << state->req.addr << std::dec << ")";
+            oss << "Bus :: Cache_" << state->req.source->name() 
+                << " invalidated Cache_" << cache->name() 
+                << " addr(0x" << std::hex << state->req.addr << std::dec <<")";
             state->bus->logger.log(state->bus->sim.now(), oss.str());
 
-            if (--state->remaining == 0) {
-                state->bus->sim.schedule(state->bus->sim.now(), [state]() {
-                    if (state->req.callback) {
-                        state->req.callback(true);
-                    }
-                    state->bus->sim.schedule(state->bus->sim.now(), [bus = state->bus](){ bus->process_next(); });
+            if (--(state->remaining) == 0) {
+                state->bus->sim.schedule(state->bus->sim.now(), [state](){
+                    if (state->req.callback) state->req.callback(true);
+                    state->bus->sim.schedule(state->bus->sim.now(), [state](){ state->bus->process_next(); });
                 });
             }
         });
     }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
